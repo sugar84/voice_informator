@@ -46,7 +46,9 @@ if ($talk_mor) {
 foreach my $aa (@phrases_to_say  ) {
     print $aa, "\n";
 }
+amarok_manage( "pause" );
 say_voiceman(@phrases_to_say);
+amarok_manage( "play" );
 
 # print Dumper($gl_data);
 
@@ -196,10 +198,28 @@ sub say_voiceman {
     my @to_say_it = @_;
     my $voiceman = "/usr/bin/voiceman";
     foreach my $string (@to_say_it) {
-#        print $string, " 1111 \n";
         utf8::encode($string);
         qx ~echo $string | $voiceman~;
     }
-    
 }
 
+sub say_festival {
+    my @to_say_it = @_;
+    my $festival = "/usr/bin/festival";
+    foreach my $string (@to_say_it) {
+        utf8::encode($string);
+        qx ~echo $string | $festival --tts --language russian~;
+    }
+}
+
+sub amarok_manage {
+    my ($action) = @_;
+    if ($action =~ /pause/) {
+        print $action;
+        qx ~dbus-send --type=method_call --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.Pause~;
+    }
+    elsif ($action =~/play/) {
+        print $action;
+        qx ~dbus-send --type=method_call --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.Play~; 
+    }
+}
