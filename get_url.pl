@@ -46,9 +46,7 @@ if ($talk_mor) {
 foreach my $aa (@phrases_to_say  ) {
     print $aa, "\n";
 }
-amarok_manage( "pause" );
-say_voiceman(@phrases_to_say);
-amarok_manage( "play" );
+say_info(@phrases_to_say);
 
 # print Dumper($gl_data);
 
@@ -185,7 +183,7 @@ sub get_time_mor {
     my $length = scalar @{$data} - 1;
 #    my $length = 4;
     foreach my $i (0..$length) {
-        return $i if ($data->[$i]->{hour} == 9);
+        return $i if ($data->[$i]->{hour} == 10);
     }
 }
 
@@ -194,32 +192,40 @@ sub take_opts {
 # my 
 }
 
-sub say_voiceman {
-    my @to_say_it = @_;
-    my $voiceman = "/usr/bin/voiceman";
-    foreach my $string (@to_say_it) {
-        utf8::encode($string);
-        qx ~echo $string | $voiceman~;
-    }
-}
-
-sub say_festival {
-    my @to_say_it = @_;
+sub info_to_speaker {
+    my ($speaker, @to_say_it) = @_;
     my $festival = "/usr/bin/festival";
-    foreach my $string (@to_say_it) {
-        utf8::encode($string);
-        qx ~echo $string | $festival --tts --language russian~;
+    my $voiceman = "/usr/bin/voiceman";
+    
+    if ($speaker eq "voiceman") {
+        foreach my $string (@to_say_it) {
+            utf8::encode($string);
+            qx( echo $string | $voiceman );
+        }
+    }
+    elsif ($speaker eq "festival") {
+        foreach my $string (@to_say_it) {
+            utf8::encode($string);
+            qx( echo $string | $festival --tts --language russian );
+        }
     }
 }
 
-sub amarok_manage {
-    my ($action) = @_;
-    if ($action =~ /pause/) {
-        print $action;
-        qx ~dbus-send --type=method_call --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.Pause~;
-    }
-    elsif ($action =~/play/) {
-        print $action;
-        qx ~dbus-send --type=method_call --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.Play~; 
+#sub player_manage {
+#    my ($player, $time) = @_;
+#}
+
+sub say_info {
+    my @phrases_to_say = @_;
+    my $prog_speaker = "festival";
+    my $amarok_dbus_status = qx( dbus-send --print-reply --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.GetStatus );
+    my ($play_status) =  $amarok_dbus_status =~ /int32 (\d)/;
+    if (defined $play_status and $play_status == 0) {
+        qx( dbus-send --type=method_call --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.Pause );
+        info_to_speaker( $prog_speaker, @phrases_to_say );
+        sleep 10;
+        qx( dbus-send --type=method_call --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.Play );
+    } else {
+        info_to_speaker( $prog_speaker, @phrases_to_say );
     }
 }
