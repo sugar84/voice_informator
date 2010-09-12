@@ -218,13 +218,13 @@ sub info_to_speaker {
 sub say_info {
     my @phrases_to_say = @_;
     my $prog_speaker = "festival";
-    my $amarok_dbus_status = qx( dbus-send --print-reply --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.GetStatus );
+    my $amarok_dbus_status = qx( /usr/bin/dbus-send --print-reply --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.GetStatus );
     my ($play_status) =  $amarok_dbus_status =~ /int32 (\d)/;
     if (defined $play_status and $play_status == 0) {
-        qx( dbus-send --type=method_call --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.Pause );
+        system '/usr/bin/dbus-send --type=method_call --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.Pause';
         info_to_speaker( $prog_speaker, @phrases_to_say );
         sleep 10;
-        qx( dbus-send --type=method_call --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.Play );
+        system '/usr/bin/dbus-send --type=method_call --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.Play';
     } else {
         info_to_speaker( $prog_speaker, @phrases_to_say );
     }
