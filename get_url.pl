@@ -1,13 +1,12 @@
-#!/usr/bin/perl -w
-# Create a user agent object
-# use utf8;
+#!/usr/bin/perl
+use warnings;
+use strict;
 use LWP::UserAgent;
 use XML::Simple;
-use Data::Dumper;
-use Data::Dump 'dump';
+#use Data::Dumper;
+#use Data::Dump 'dump';
 use Net::Ping;
 use utf8;
-use strict;
 
 my ($min_t, $max_t, $min_t_mor, $max_t_mor, $time_section);
 my $subj = "температура на улице ";
@@ -18,10 +17,11 @@ my $url = "http://informer.gismeteo.ru/xml/34731_1.xml";
 
 my ($xml_data, @phrases_to_say);
 my $xml = get_data($url);
-my $data_ref = ext_data($xml);    
+my $data_ref = ext_data_from_xml($xml);
+
 binmode STDOUT, ":utf8";
     
-print dump($data_ref);
+#print dump($data_ref);
 if ($talk_mor) {
     $time_section = get_time_mor($data_ref);
 }
@@ -29,20 +29,19 @@ my $temps_ref = ext_temp($data_ref, $time_section);
 my $time = get_time_mor($data_ref);
 my $hitime = hi_time($time);
 
-my $units = word_form($temps_ref->{'current_max'});
+my $units_now = word_form($temps_ref->{'current_max'});
+my $units_mor = word_form($temps_ref->{'next_max'});
 
-# print "$hitime, $subj  $temps_ref->{'current_min'} $temps_ref->{'current_max'} $units";
 push @phrases_to_say, $hitime . " " . $subj . " " .
                       $temps_ref->{'current_min'} . " " .
-                      $temps_ref->{'current_max'} . " " . $units;
+                      $temps_ref->{'current_max'} . " " . $units_now;
 # talk forecast to the morning 
 if ($talk_mor) {
-#    print "Температура на утро $temps_ref->{'next_min'} $temps_ref->{'next_max'} $units";
-    push @phrases_to_say,
-                "Температура на утро " . $temps_ref->{'next_min'} .
-                " " . $temps_ref->{'next_max'} . " " . $units;
+    push @phrases_to_say, "Температура на утро " . $temps_ref->{'next_min'} .
+        " " . $temps_ref->{'next_max'} . " " . $units_mor;
 }
 
+# 
 foreach my $aa (@phrases_to_say  ) {
     print $aa, "\n";
 }
@@ -86,7 +85,7 @@ sub get_data {
 }
 
 # extract data from xml
-sub ext_data {
+sub ext_data_from_xml {
     my ($xml) = @_;
     my $fulldata_ref = XMLin($xml);
     
@@ -150,12 +149,24 @@ sub check_internet {
     }
 }
 
+sub compose_time {
+    my ($hour, $min) = (localtime)[2,1];
+    my ($hour_unit, $min_unit);
+    SWITCH: {
+#        if ($hour < 6 or $hour == 23)   { $phrase = "Доброй ночи"; last SWITCH; }
+#        if ($hour >= 6  and $hour < 12) { $phrase = "Доброе утро"; last SWITCH; }
+#        if ($hour >= 12 and $hour < 18) { $phrase = "Добрый день"; last SWITCH; }
+#        if ($hour >= 18)                { $phrase = "Добрый вечер"; last SWITCH; }
+#        заменить все
+    }
+}
+
 sub hi_time {
     my $hour = (localtime)[2];
     my $phrase;
     SWITCH: {
         if ($hour < 6 or $hour == 23)   { $phrase = "Доброй ночи"; last SWITCH; }
-        if ($hour >=6  and $hour < 12)  { $phrase = "Доброе утро"; last SWITCH; }
+        if ($hour >= 6  and $hour < 12) { $phrase = "Доброе утро"; last SWITCH; }
         if ($hour >= 12 and $hour < 18) { $phrase = "Добрый день"; last SWITCH; }
         if ($hour >= 18)                { $phrase = "Добрый вечер"; last SWITCH; }
         $phrase = "Доброго времени суток";
@@ -209,6 +220,7 @@ sub info_to_speaker {
             qx( echo $string | $festival --tts --language russian );
         }
     }
+    return;
 }
 
 #sub player_manage {
@@ -228,4 +240,5 @@ sub say_info {
     } else {
         info_to_speaker( $prog_speaker, @phrases_to_say );
     }
+    return;
 }
