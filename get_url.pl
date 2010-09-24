@@ -4,15 +4,15 @@ use strict;
 use LWP::UserAgent;
 use XML::Simple;
 #use Data::Dumper;
-#use Data::Dump 'dump';
+#use Data::Dump qw(dump);
 use Net::Ping;
 use utf8;
 
 my ($min_t, $max_t, $min_t_mor, $max_t_mor, $time_section);
 my $subj = "температура на улице ";
+# variable for checking talk or not forecast on the morning
 my $talk_mor = "1";
 
-# переменная для проверки, говорить ли утром
 my $url = "http://informer.gismeteo.ru/xml/34731_1.xml";
 
 my ($xml_data, @phrases_to_say);
@@ -42,9 +42,9 @@ if ($talk_mor) {
 }
 
 # 
-foreach my $aa (@phrases_to_say  ) {
-    print $aa, "\n";
-}
+#foreach my $aa (@phrases_to_say  ) {
+#    print $aa, "\n";
+#}
 say_info(@phrases_to_say);
 
 # print Dumper($gl_data);
@@ -176,7 +176,7 @@ sub hi_time {
 
 sub word_form {
     my ($last_digit) = @_;
-    print $last_digit, "AAAAAAAAAAAAAA!!!!!!!!!!!!!!!!!!!\n";
+#    print $last_digit, "AAAAAAAAAAAAAA!!!!!!!!!!!!!!!!!!!\n";
     if ($last_digit  >= 20) {
         $last_digit = chop $last_digit
     }
@@ -189,6 +189,27 @@ sub word_form {
     return $word;
 }
 
+sub construct_time {
+    my ($minute, $hour) = (localtime)[1,2];
+    
+    my $last_hour = chop $hour if $hour >= 20;
+    my $last_min  = chop $minute if $minute >= 20;
+    my ($hour_unit, $min_unint);
+
+    SWITCH1: {
+        if ($last_hour == 1) { $hour_unit = "час"; last SWITCH1 }
+        if ($last_hour >= 2 and $last_hour <= 4) { $hour_unit = "часа"; last SWITCH1 }
+        if ($last_hour >=5 or  $last_hour == 0) { $hour_unit = "часов"; last SWITCH1 }
+    }
+
+    SWITCH2: {
+        if ($last_min == 1) { $min_unit = "минута"; last SWITCH2 }
+        if ($last_min >= 2 and $last_min <= 4) { $min_unit = "минуты"; last SWITCH2 }
+        if ($last_min >=5 or  $last_min == 0) { $min_unit = "минут"; last SWITCH2 }
+    }
+    return ($minute, $min_unit, $hour, $hour_unit);
+}
+
 sub get_time_mor {
     my ($data) = @_;
     my $length = scalar @{$data} - 1;
@@ -197,7 +218,6 @@ sub get_time_mor {
         return $i if ($data->[$i]->{hour} == 10);
     }
 }
-
 
 sub take_opts {
 # my 
