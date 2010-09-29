@@ -231,6 +231,9 @@ sub info_to_speaker {
     if ($speaker eq "voiceman") {
         foreach my $string (@to_say_it) {
             utf8::encode($string);
+            # this is for voiceman client, that see on the envirement variable $LANG 
+            # and convert_to_english( "принимает решение" )
+            $ENV{"LANG"} = "ru_RU.UTF-8";
             qx( echo $string | $voiceman );
         }
     }
