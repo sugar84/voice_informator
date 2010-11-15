@@ -8,19 +8,25 @@ use XML::Simple;
 use Net::Ping;
 use utf8;
 
+###############################################################################
+### CONFIGURATION
+###############################################################################
 my ($min_t, $max_t, $min_t_mor, $max_t_mor, $time_section);
 my $subj = "температура на улице ";
 # variable for checking talk or not forecast on the morning
 my $talk_mor = "1";
 
 my $url = "http://informer.gismeteo.ru/xml/34731_1.xml";
-
 my ($xml_data, @phrases_to_say);
+###############################################################################
+
+### Main section
+
+binmode STDOUT, ":utf8";
+
 my $xml = get_data($url);
 my $data_ref = ext_data_from_xml($xml);
 
-binmode STDOUT, ":utf8";
-    
 #print dump($data_ref);
 if ($talk_mor) {
     $time_section = get_time_mor($data_ref);
@@ -32,13 +38,13 @@ my $hitime = hi_time($time);
 my $units_now = word_form($temps_ref->{'current_max'});
 my $units_mor = word_form($temps_ref->{'next_max'});
 
-push @phrases_to_say, $hitime . " " . $subj . " " .
-                      $temps_ref->{'current_min'} . " " .
-                      $temps_ref->{'current_max'} . " " . $units_now;
-# talk forecast to the morning 
+push @phrases_to_say, join " ", $hitime,  $subj, $temps_ref->{'current_min'},
+        $temps_ref->{'current_max'}, $units_now;
+
+# talk forecast for the morning 
 if ($talk_mor) {
-    push @phrases_to_say, "Температура на утро " . $temps_ref->{'next_min'} .
-        " " . $temps_ref->{'next_max'} . " " . $units_mor;
+    push @phrases_to_say, join " ", "Температура на утро ", 
+            $temps_ref->{'next_min'}, $temps_ref->{'next_max'}, $units_mor;
 }
 
 # 
@@ -49,8 +55,11 @@ say_info(@phrases_to_say);
 
 # print Dumper($gl_data);
 
+### Subs
+
 sub get_xml {
     my ($forecast_url) = @_;
+    
     my $ua = LWP::UserAgent->new;
     $ua->agent("Get the weather");
     
@@ -71,6 +80,7 @@ sub get_xml {
 
 sub get_data {
     my ($forecast_url) = @_;
+    
     my $xml_data;
     LEECH:
     for my $i (1..3) {
@@ -87,6 +97,7 @@ sub get_data {
 # extract data from xml
 sub ext_data_from_xml {
     my ($xml) = @_;
+    
     my $fulldata_ref = XMLin($xml);
     
     # left here information related only to the forecast
@@ -137,6 +148,7 @@ sub check_google {
 # то die (интернет недоступен)
 sub check_internet {
     my $res_of_sub = check_google;
+    
     if ($res_of_sub) {
         if ($res_of_sub =~ /^reach/) {
             return "интернет доступен, но сайт погоды не доступен\n";
@@ -152,6 +164,7 @@ sub check_internet {
 sub compose_time {
     my ($hour, $min) = (localtime)[2,1];
     my ($hour_unit, $min_unit);
+    
     SWITCH: {
 #        if ($hour < 6 or $hour == 23)   { $phrase = "Доброй ночи"; last SWITCH; }
 #        if ($hour >= 6  and $hour < 12) { $phrase = "Доброе утро"; last SWITCH; }
@@ -164,6 +177,7 @@ sub compose_time {
 sub hi_time {
     my $hour = (localtime)[2];
     my $phrase;
+    
     SWITCH: {
         if ($hour < 6 or $hour == 23)   { $phrase = "Доброй ночи"; last SWITCH; }
         if ($hour >= 6  and $hour < 12) { $phrase = "Доброе утро"; last SWITCH; }
@@ -176,6 +190,7 @@ sub hi_time {
 
 sub word_form {
     my ($last_digit) = @_;
+
 #    print $last_digit, "AAAAAAAAAAAAAA!!!!!!!!!!!!!!!!!!!\n";
     if ($last_digit  >= 20) {
         $last_digit = chop $last_digit
@@ -212,11 +227,18 @@ sub construct_time {
 
 sub get_time_mor {
     my ($data) = @_;
+
     my $length = scalar @{$data} - 1;
 #    my $length = 4;
     foreach my $i (0..$length) {
-        return $i if ($data->[$i]->{hour} == 10);
+        return $i if ($data->[$i]->{hour} == 9);
     }
+}
+
+# need to get sub that determines current time scheme of the weather
+# provider (eg. gismeteo)#
+sub deter_time{
+
 }
 
 sub take_opts {
@@ -225,13 +247,14 @@ sub take_opts {
 
 sub info_to_speaker {
     my ($speaker, @to_say_it) = @_;
+
     my $festival = "/usr/bin/festival";
     my $voiceman = "/usr/bin/voiceman";
     
     if ($speaker eq "voiceman") {
         foreach my $string (@to_say_it) {
             utf8::encode($string);
-            # this is for voiceman client, that see on the envirement variable $LANG 
+            # this is for voiceman client, that see on the environment variable $LANG 
             # and convert_to_english( "принимает решение" )
             $ENV{"LANG"} = "ru_RU.UTF-8";
             qx( echo $string | $voiceman );
@@ -252,14 +275,17 @@ sub info_to_speaker {
 
 sub say_info {
     my @phrases_to_say = @_;
+
     my $prog_speaker = "festival";
     my $amarok_dbus_status = qx( /usr/bin/dbus-send --print-reply --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.GetStatus );
     my ($play_status) =  $amarok_dbus_status =~ /int32 (\d)/;
     if (defined $play_status and $play_status == 0) {
-        system '/usr/bin/dbus-send --type=method_call --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.Pause';
+        system '/usr/bin/dbus-send --type=method_call --dest=org.kde.amarok ' . 
+                '/Player org.freedesktop.MediaPlayer.Pause';
         info_to_speaker( $prog_speaker, @phrases_to_say );
         sleep 10;
-        system '/usr/bin/dbus-send --type=method_call --dest=org.kde.amarok /Player org.freedesktop.MediaPlayer.Play';
+        system '/usr/bin/dbus-send --type=method_call --dest=org.kde.amarok ' .
+                '/Player org.freedesktop.MediaPlayer.Play';
     } else {
         info_to_speaker( $prog_speaker, @phrases_to_say );
     }
