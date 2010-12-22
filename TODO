@@ -1,0 +1,7 @@
+TODO list:
+1. - Add argiments of command line
+2. - Push into one class all about contructiing phrases,
+     getting info from web e.g. Forecast.pm
+3. - Rewrite checking inernet connection
+4. - Do it more configurable
+

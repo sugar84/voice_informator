@@ -51,7 +51,7 @@ if ($talk_mor) {
 #foreach my $aa (@phrases_to_say  ) {
 #    print $aa, "\n";
 #}
-say_info(@phrases_to_say);
+say_info( @phrases_to_say );
 
 # print Dumper($gl_data);
 
@@ -136,7 +136,8 @@ sub check_google {
         if ($p->ping($host1)) {
             $res_of_ping = "reachable";
             last;
-        } elsif ($p->ping($host2)) {
+        }
+        elsif ($p->ping($host2)) {
             $res_of_ping = "dns is unreachable";
         }
     }
